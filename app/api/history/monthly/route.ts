@@ -4,13 +4,21 @@ import { q } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const rows = await q(
-        `SELECT to_char(month, 'YYYY-MM') AS month,
-                imported_kwh::float AS imported_kwh,
-                exported_kwh::float AS exported_kwh,
-                net_kwh::float AS net_kwh
-           FROM monthly_energy
-          ORDER BY month ASC`
-    );
-    return NextResponse.json(rows);
+    try {
+        const rows = await q(
+            `SELECT to_char(month, 'YYYY-MM') AS month,
+                    imported_kwh::float AS imported_kwh,
+                    exported_kwh::float AS exported_kwh,
+                    net_kwh::float AS net_kwh
+               FROM monthly_energy
+              ORDER BY month ASC`
+        );
+        return NextResponse.json(rows);
+    } catch (e: any) {
+        console.error('[/api/history/monthly] failed:', e);
+        return NextResponse.json(
+            { error: e.message || 'monthly history query failed', code: e.code || null },
+            { status: 500 }
+        );
+    }
 }

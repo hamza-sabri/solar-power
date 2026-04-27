@@ -9,15 +9,22 @@ declare global {
     var __pgPool: Pool | undefined;
 }
 
-export const pool: Pool =
-    global.__pgPool ||
-    new Pool({
-        connectionString: process.env.DATABASE_URL,
-        ssl: process.env.DATABASE_URL?.includes('sslmode')
-            ? { rejectUnauthorized: false }
-            : false,
+function makePool(): Pool {
+    const url = process.env.DATABASE_URL;
+    if (!url) {
+        // Don't crash the module — let API routes return informative errors instead.
+        console.error('[server] DATABASE_URL is not set; DB-backed routes will fail');
+    }
+    return new Pool({
+        connectionString: url,
+        ssl: url?.includes('sslmode') ? { rejectUnauthorized: false } : false,
         max: 4,
+        // fail-fast on first bad credentials instead of waiting forever
+        connectionTimeoutMillis: 8_000,
     });
+}
+
+export const pool: Pool = global.__pgPool || makePool();
 
 if (process.env.NODE_ENV !== 'production') global.__pgPool = pool;
 

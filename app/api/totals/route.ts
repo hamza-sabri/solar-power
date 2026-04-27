@@ -4,33 +4,41 @@ import { q, tariffs } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-    const url = new URL(req.url);
-    const days = Math.max(1, Math.min(9999, Number(url.searchParams.get('days') ?? 30)));
-    const cutoff = days >= 9999 ? '1900-01-01' : `CURRENT_DATE - INTERVAL '${days - 1} days'`;
+    try {
+        const url = new URL(req.url);
+        const days = Math.max(1, Math.min(9999, Number(url.searchParams.get('days') ?? 30)));
+        const cutoff = days >= 9999 ? '1900-01-01' : `CURRENT_DATE - INTERVAL '${days - 1} days'`;
 
-    const sql = days >= 9999
-        ? `SELECT COALESCE(SUM(imported_kwh),0)::float AS imported,
-                  COALESCE(SUM(exported_kwh),0)::float AS exported,
-                  MIN(day)::text AS from_day, MAX(day)::text AS to_day
-             FROM daily_energy`
-        : `SELECT COALESCE(SUM(imported_kwh),0)::float AS imported,
-                  COALESCE(SUM(exported_kwh),0)::float AS exported,
-                  MIN(day)::text AS from_day, MAX(day)::text AS to_day
-             FROM daily_energy
-            WHERE day >= ${cutoff}`;
+        const sql = days >= 9999
+            ? `SELECT COALESCE(SUM(imported_kwh),0)::float AS imported,
+                      COALESCE(SUM(exported_kwh),0)::float AS exported,
+                      MIN(day)::text AS from_day, MAX(day)::text AS to_day
+                 FROM daily_energy`
+            : `SELECT COALESCE(SUM(imported_kwh),0)::float AS imported,
+                      COALESCE(SUM(exported_kwh),0)::float AS exported,
+                      MIN(day)::text AS from_day, MAX(day)::text AS to_day
+                 FROM daily_energy
+                WHERE day >= ${cutoff}`;
 
-    const [row] = await q<{ imported: number; exported: number; from_day: string; to_day: string }>(sql);
-    const net = row.imported - row.exported;
-    const bill = row.imported * tariffs.import - row.exported * tariffs.export;
+        const [row] = await q<{ imported: number; exported: number; from_day: string; to_day: string }>(sql);
+        const net = row.imported - row.exported;
+        const bill = row.imported * tariffs.import - row.exported * tariffs.export;
 
-    return NextResponse.json({
-        days,
-        imported_kwh: row.imported,
-        exported_kwh: row.exported,
-        net_kwh: net,
-        bill_estimate: bill,
-        tariff_import: tariffs.import,
-        tariff_export: tariffs.export,
-        range: { from: row.from_day, to: row.to_day },
-    });
+        return NextResponse.json({
+            days,
+            imported_kwh: row.imported,
+            exported_kwh: row.exported,
+            net_kwh: net,
+            bill_estimate: bill,
+            tariff_import: tariffs.import,
+            tariff_export: tariffs.export,
+            range: { from: row.from_day, to: row.to_day },
+        });
+    } catch (e: any) {
+        console.error('[/api/totals] failed:', e);
+        return NextResponse.json(
+            { error: e.message || 'totals query failed', code: e.code || null },
+            { status: 500 }
+        );
+    }
 }

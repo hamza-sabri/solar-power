@@ -4,10 +4,18 @@ import { q } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const rows = await q(
-        `SELECT year, imported_kwh::float AS imported_kwh,
-                exported_kwh::float AS exported_kwh, net_kwh::float AS net_kwh
-           FROM yearly_energy ORDER BY year ASC`
-    );
-    return NextResponse.json(rows);
+    try {
+        const rows = await q(
+            `SELECT year, imported_kwh::float AS imported_kwh,
+                    exported_kwh::float AS exported_kwh, net_kwh::float AS net_kwh
+               FROM yearly_energy ORDER BY year ASC`
+        );
+        return NextResponse.json(rows);
+    } catch (e: any) {
+        console.error('[/api/history/yearly] failed:', e);
+        return NextResponse.json(
+            { error: e.message || 'yearly history query failed', code: e.code || null },
+            { status: 500 }
+        );
+    }
 }
