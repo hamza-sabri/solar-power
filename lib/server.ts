@@ -27,7 +27,7 @@ export async function q<T = any>(text: string, values: any[] = []): Promise<T[]>
 }
 
 // Re-export meter helpers (the .mjs file imports cleanly into Next/TS)
-// @ts-expect-error – .mjs has no types yet, but Next handles it.
+// @ts-ignore – .mjs has no types yet, but Next handles it.
 export {
     getOverview, getInstantaneous, getCounters,
     getDailyProfile, getMonthlyProfile, getYearlyProfile,
