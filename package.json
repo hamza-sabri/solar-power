@@ -1,0 +1,43 @@
+{
+  "name": "solar-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Friendly solar+grid dashboard for a Siemens PAC2200 meter, with weather-aware insights and CopilotKit AI chat.",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "backfill": "node scripts/backfill.mjs",
+    "poller": "node scripts/poller.mjs",
+    "apply-schema": "node scripts/apply_schema.mjs",
+    "test:meter": "node -e \"import('./lib/meter.mjs').then(m => m.fetchAll().then(r => console.log(JSON.stringify(r, null, 2))))\""
+  },
+  "dependencies": {
+    "@copilotkit/react-core": "^1.10.5",
+    "@copilotkit/react-ui": "^1.10.5",
+    "@copilotkit/runtime": "^1.10.5",
+    "@gsap/react": "^2.1.2",
+    "dotenv": "^16.4.5",
+    "gsap": "^3.12.7",
+    "next": "^15.5.4",
+    "openai": "^4.71.0",
+    "pg": "^8.11.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "recharts": "^2.15.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "@types/pg": "^8.11.10",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.16",
+    "typescript": "^5.7.2"
+  }
+}
