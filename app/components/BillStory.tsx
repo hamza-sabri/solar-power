@@ -9,7 +9,10 @@ type Row = { month: string; imported_kwh: number; exported_kwh: number; net_kwh:
 export function BillStory() {
     const [rows, setRows] = useState<Row[] | null>(null);
     useEffect(() => {
-        fetch('/api/history/monthly').then(r => r.json()).then(setRows);
+        fetch('/api/history/monthly')
+            .then(r => r.json())
+            .then(d => setRows(Array.isArray(d) ? d : []))
+            .catch(() => setRows([]));
     }, []);
 
     return (

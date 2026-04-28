@@ -29,7 +29,16 @@ export function PeriodTotals() {
         let cancelled = false;
         fetch(`/api/totals?days=${active}`)
             .then(r => r.json())
-            .then(d => { if (!cancelled) setTotals(d); });
+            .then(d => {
+                if (cancelled) return;
+                // defensive: ensure required shape
+                if (d && typeof d.imported_kwh === 'number' && d.range) {
+                    setTotals(d);
+                } else {
+                    setTotals(null);
+                }
+            })
+            .catch(() => { if (!cancelled) setTotals(null); });
         return () => { cancelled = true; };
     }, [active]);
 

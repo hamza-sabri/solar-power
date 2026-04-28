@@ -12,10 +12,7 @@ export async function GET() {
         );
         return NextResponse.json(rows);
     } catch (e: any) {
-        console.error('[/api/history/yearly] failed:', e);
-        return NextResponse.json(
-            { error: e.message || 'yearly history query failed', code: e.code || null },
-            { status: 500 }
-        );
+        console.error('[/api/history/yearly] failed:', e?.message);
+        return NextResponse.json([]);
     }
 }

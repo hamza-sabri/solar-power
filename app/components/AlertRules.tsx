@@ -31,7 +31,10 @@ export function AlertRules({
     const [showAdd, setShowAdd] = useState(false);
 
     const reload = () =>
-        fetch('/api/alert-rules').then(r => r.json()).then(setRules);
+        fetch('/api/alert-rules')
+            .then(r => r.json())
+            .then(d => setRules(Array.isArray(d) ? d : []))
+            .catch(() => setRules([]));
 
     useEffect(() => { reload(); }, []);
 

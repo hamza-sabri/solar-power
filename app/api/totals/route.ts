@@ -4,11 +4,11 @@ import { q, tariffs } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
-    try {
-        const url = new URL(req.url);
-        const days = Math.max(1, Math.min(9999, Number(url.searchParams.get('days') ?? 30)));
-        const cutoff = days >= 9999 ? '1900-01-01' : `CURRENT_DATE - INTERVAL '${days - 1} days'`;
+    const url = new URL(req.url);
+    const days = Math.max(1, Math.min(9999, Number(url.searchParams.get('days') ?? 30)));
 
+    try {
+        const cutoff = days >= 9999 ? '1900-01-01' : `CURRENT_DATE - INTERVAL '${days - 1} days'`;
         const sql = days >= 9999
             ? `SELECT COALESCE(SUM(imported_kwh),0)::float AS imported,
                       COALESCE(SUM(exported_kwh),0)::float AS exported,
@@ -35,10 +35,18 @@ export async function GET(req: Request) {
             range: { from: row.from_day, to: row.to_day },
         });
     } catch (e: any) {
-        console.error('[/api/totals] failed:', e);
-        return NextResponse.json(
-            { error: e.message || 'totals query failed', code: e.code || null },
-            { status: 500 }
-        );
+        console.error('[/api/totals] failed:', e?.message);
+        // Safe shape so the UI doesn't crash. Real diagnostic at /api/health.
+        return NextResponse.json({
+            days,
+            imported_kwh: 0,
+            exported_kwh: 0,
+            net_kwh: 0,
+            bill_estimate: 0,
+            tariff_import: tariffs.import,
+            tariff_export: tariffs.export,
+            range: { from: '—', to: '—' },
+            __error: e?.message || 'unknown',
+        });
     }
 }

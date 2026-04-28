@@ -15,10 +15,7 @@ export async function GET() {
         );
         return NextResponse.json(rows);
     } catch (e: any) {
-        console.error('[/api/history/monthly] failed:', e);
-        return NextResponse.json(
-            { error: e.message || 'monthly history query failed', code: e.code || null },
-            { status: 500 }
-        );
+        console.error('[/api/history/monthly] failed:', e?.message);
+        return NextResponse.json([]);
     }
 }

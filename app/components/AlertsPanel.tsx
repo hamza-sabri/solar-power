@@ -8,7 +8,10 @@ type Alert = {
 
 export function AlertsPanel() {
     const [alerts, setAlerts] = useState<Alert[] | null>(null);
-    const reload = () => fetch('/api/alerts').then(r => r.json()).then(setAlerts);
+    const reload = () => fetch('/api/alerts')
+        .then(r => r.json())
+        .then(d => setAlerts(Array.isArray(d) ? d : []))
+        .catch(() => setAlerts([]));
     useEffect(() => {
         reload();
         const id = setInterval(reload, 30_000);

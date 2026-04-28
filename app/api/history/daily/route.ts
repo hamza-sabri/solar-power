@@ -17,10 +17,7 @@ export async function GET(req: Request) {
         );
         return NextResponse.json(rows);
     } catch (e: any) {
-        console.error('[/api/history/daily] failed:', e);
-        return NextResponse.json(
-            { error: e.message || 'daily history query failed', code: e.code || null },
-            { status: 500 }
-        );
+        console.error('[/api/history/daily] failed:', e?.message);
+        return NextResponse.json([]);   // empty array — UI shows "no data"
     }
 }

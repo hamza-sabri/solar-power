@@ -18,20 +18,25 @@ export function Insights() {
 
     useEffect(() => {
         Promise.all([
-            fetch('/api/history/yearly').then(r => r.json()),
-            fetch('/api/history/monthly').then(r => r.json()),
-        ]).then(([y, m]) => { setYearly(y); setMonthly(m); });
+            fetch('/api/history/yearly').then(r => r.json()).catch(() => []),
+            fetch('/api/history/monthly').then(r => r.json()).catch(() => []),
+        ]).then(([y, m]) => {
+            setYearly(Array.isArray(y) ? y : []);
+            setMonthly(Array.isArray(m) ? m : []);
+        });
     }, []);
 
     if (!yearly || !monthly) {
         return <section className="panel h-32 animate-pulse" />;
     }
 
-    const fullYears = yearly.filter(y => y.imported_kwh > 50);
+    const fullYears = yearly.filter(y => y && typeof y.imported_kwh === 'number' && y.imported_kwh > 50);
     const lastFull = fullYears[fullYears.length - 1];
     const prevFull = fullYears[fullYears.length - 2];
-    const exportYoy = prevFull ? ((lastFull.exported_kwh - prevFull.exported_kwh) / prevFull.exported_kwh) * 100 : 0;
-    const importYoy = prevFull ? ((lastFull.imported_kwh - prevFull.imported_kwh) / prevFull.imported_kwh) * 100 : 0;
+    const exportYoy = (prevFull && lastFull && prevFull.exported_kwh > 0)
+        ? ((lastFull.exported_kwh - prevFull.exported_kwh) / prevFull.exported_kwh) * 100 : 0;
+    const importYoy = (prevFull && lastFull && prevFull.imported_kwh > 0)
+        ? ((lastFull.imported_kwh - prevFull.imported_kwh) / prevFull.imported_kwh) * 100 : 0;
 
     const thisYear = new Date().getFullYear();
     const thisYM = monthly.filter(m => Number(m.month.slice(0, 4)) === thisYear);

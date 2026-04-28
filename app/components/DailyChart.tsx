@@ -10,7 +10,10 @@ export function DailyChart() {
     const [rows, setRows] = useState<Row[] | null>(null);
     const [days, setDays] = useState(30);
     useEffect(() => {
-        fetch(`/api/history/daily?days=${days}`).then(r => r.json()).then(setRows);
+        fetch(`/api/history/daily?days=${days}`)
+            .then(r => r.json())
+            .then(d => setRows(Array.isArray(d) ? d : []))
+            .catch(() => setRows([]));
     }, [days]);
 
     return (

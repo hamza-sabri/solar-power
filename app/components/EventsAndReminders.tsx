@@ -44,12 +44,16 @@ export function EventsAndReminders() {
     const seenNotifs = useRef<Set<number>>(new Set());
 
     const reload = async () => {
-        const [ev, sc] = await Promise.all([
-            fetch('/api/events?withImpact=1').then(r => r.json()),
-            fetch('/api/schedules').then(r => r.json()),
-        ]);
-        setEvents(ev);
-        setSchedules(sc);
+        try {
+            const [ev, sc] = await Promise.all([
+                fetch('/api/events?withImpact=1').then(r => r.json()).catch(() => []),
+                fetch('/api/schedules').then(r => r.json()).catch(() => []),
+            ]);
+            setEvents(Array.isArray(ev) ? ev : []);
+            setSchedules(Array.isArray(sc) ? sc : []);
+        } catch {
+            setEvents([]); setSchedules([]);
+        }
     };
 
     useEffect(() => {

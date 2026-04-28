@@ -4,13 +4,18 @@ import { q } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
-    const rows = await q(
-        `SELECT id, title, category, frequency_days,
-                last_done_at::text, next_due_at::text, enabled, notes
-           FROM schedules
-          ORDER BY enabled DESC, next_due_at ASC`
-    );
-    return NextResponse.json(rows);
+    try {
+        const rows = await q(
+            `SELECT id, title, category, frequency_days,
+                    last_done_at::text, next_due_at::text, enabled, notes
+               FROM schedules
+              ORDER BY enabled DESC, next_due_at ASC`
+        );
+        return NextResponse.json(rows);
+    } catch (e: any) {
+        console.error('[/api/schedules] failed:', e?.message);
+        return NextResponse.json([]);
+    }
 }
 
 export async function POST(req: Request) {

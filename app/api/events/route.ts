@@ -4,6 +4,7 @@ import { q } from '@/lib/server';
 export const dynamic = 'force-dynamic';
 
 export async function GET(req: Request) {
+    try {
     const url = new URL(req.url);
     const withImpact = url.searchParams.get('withImpact') === '1';
     const events = await q<{
@@ -43,6 +44,10 @@ export async function GET(req: Request) {
     }));
 
     return NextResponse.json(enriched);
+    } catch (e: any) {
+        console.error('[/api/events] failed:', e?.message);
+        return NextResponse.json([]);
+    }
 }
 
 export async function POST(req: Request) {
