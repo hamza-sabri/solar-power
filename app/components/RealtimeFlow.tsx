@@ -69,13 +69,17 @@ function stepState(prev: FlowState, pL1: number): FlowState {
 
 const W = 960;
 const H = 280;
+// Topology matches the user's actual wiring:
+//   inverter routes solar to the HOME first, surplus overflows to the GRID,
+//   and at deficit/night the GRID feeds the HOME.
 const SOLAR = { x: 140, y: 140 };
-const GRID  = { x: 480, y: 140 };
-const HOME  = { x: 820, y: 140 };
+const HOME  = { x: 480, y: 140 };
+const GRID  = { x: 820, y: 140 };
 
 const PATH = {
-    solarToGrid: `M ${SOLAR.x + 50} ${SOLAR.y} L ${GRID.x - 50} ${GRID.y}`,
-    gridToHome:  `M ${GRID.x + 50} ${GRID.y} L ${HOME.x - 50} ${HOME.y}`,
+    solarToHome: `M ${SOLAR.x + 50} ${SOLAR.y} L ${HOME.x - 50} ${HOME.y}`,
+    homeToGrid:  `M ${HOME.x + 50}  ${HOME.y}  L ${GRID.x - 50} ${GRID.y}`,    // export
+    gridToHome:  `M ${GRID.x - 50}  ${GRID.y}  L ${HOME.x + 50} ${HOME.y}`,    // import (reversed)
 };
 
 const COLOR = {
@@ -223,28 +227,50 @@ export function RealtimeFlow() {
                         <marker id="arrowSolar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
                             <path d="M 0 0 L 10 5 L 0 10 z" fill={solarActive ? COLOR.solar : 'rgba(255,255,255,0.15)'} />
                         </marker>
-                        <marker id="arrowHome" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
-                            <path d="M 0 0 L 10 5 L 0 10 z" fill={homeActive ? COLOR.home : 'rgba(255,255,255,0.15)'} />
+                        <marker id="arrowExport" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill={!importing && Math.abs(gridNet) > 0.05 ? COLOR.export : 'rgba(255,255,255,0.15)'} />
+                        </marker>
+                        <marker id="arrowImport" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+                            <path d="M 0 0 L 10 5 L 0 10 z" fill={importing && Math.abs(gridNet) > 0.05 ? COLOR.import : 'rgba(255,255,255,0.15)'} />
                         </marker>
                     </defs>
 
-                    <path d={PATH.solarToGrid}
+                    {/* SOLAR → HOME (always shown, brightens when solar producing) */}
+                    <path d={PATH.solarToHome}
                           stroke={solarActive ? COLOR.solar : 'rgba(255,255,255,0.12)'}
                           strokeOpacity={solarActive ? 0.55 : 1}
                           strokeWidth="2.5" fill="none"
                           markerEnd="url(#arrowSolar)" />
-                    <path d={PATH.gridToHome}
-                          stroke={homeActive ? COLOR.home : 'rgba(255,255,255,0.12)'}
-                          strokeOpacity={homeActive ? 0.55 : 1}
-                          strokeWidth="2.5" fill="none"
-                          markerEnd="url(#arrowHome)" />
 
+                    {/* HOME ↔ GRID — direction depends on net flow */}
+                    {!importing && (
+                        <path d={PATH.homeToGrid}
+                              stroke={Math.abs(gridNet) > 0.05 ? COLOR.export : 'rgba(255,255,255,0.12)'}
+                              strokeOpacity={Math.abs(gridNet) > 0.05 ? 0.55 : 1}
+                              strokeWidth="2.5" fill="none"
+                              markerEnd="url(#arrowExport)" />
+                    )}
+                    {importing && (
+                        <path d={PATH.gridToHome}
+                              stroke={Math.abs(gridNet) > 0.05 ? COLOR.import : 'rgba(255,255,255,0.12)'}
+                              strokeOpacity={Math.abs(gridNet) > 0.05 ? 0.55 : 1}
+                              strokeWidth="2.5" fill="none"
+                              markerEnd="url(#arrowImport)" />
+                    )}
+
+                    {/* particles SOLAR → HOME */}
                     {solarActive && [0, 1, 2].map(i => (
-                        <Particle key={`s${i}`} path={PATH.solarToGrid} color={COLOR.solar}
+                        <Particle key={`s${i}`} path={PATH.solarToHome} color={COLOR.solar}
                                   dur={solarSpeed} delay={(i * solarSpeed) / 3} />
                     ))}
-                    {homeActive && [0, 1, 2].map(i => (
-                        <Particle key={`h${i}`} path={PATH.gridToHome} color={COLOR.home}
+                    {/* particles HOME → GRID (export) */}
+                    {!importing && Math.abs(gridNet) > 0.05 && [0, 1, 2].map(i => (
+                        <Particle key={`e${i}`} path={PATH.homeToGrid} color={COLOR.export}
+                                  dur={homeSpeed} delay={(i * homeSpeed) / 3} />
+                    ))}
+                    {/* particles GRID → HOME (import) */}
+                    {importing && Math.abs(gridNet) > 0.05 && [0, 1, 2].map(i => (
+                        <Particle key={`i${i}`} path={PATH.gridToHome} color={COLOR.import}
                                   dur={homeSpeed} delay={(i * homeSpeed) / 3} />
                     ))}
 
@@ -256,21 +282,21 @@ export function RealtimeFlow() {
                             strokeWidth="1.5" />
                     <text x={SOLAR.x} y={SOLAR.y + 12} textAnchor="middle" fontSize="38">☀️</text>
 
-                    {/* GRID node */}
-                    <circle cx={GRID.x} cy={GRID.y} r="60" fill="url(#rfGridGlow)" />
-                    <circle cx={GRID.x} cy={GRID.y} r="36"
-                            fill="rgba(148,163,184,0.08)"
-                            stroke={netColor}
-                            strokeWidth="1.5" />
-                    <text x={GRID.x} y={GRID.y + 11} textAnchor="middle" fontSize="36">⚡</text>
-
-                    {/* HOME node */}
+                    {/* HOME node (now in middle) */}
                     <circle cx={HOME.x} cy={HOME.y} r="60" fill="url(#rfHomeGlow)" />
                     <circle cx={HOME.x} cy={HOME.y} r="36"
                             fill="rgba(6,182,212,0.08)"
                             stroke={homeActive ? COLOR.home : 'rgba(255,255,255,0.18)'}
                             strokeWidth="1.5" />
                     <text x={HOME.x} y={HOME.y + 12} textAnchor="middle" fontSize="38">🏠</text>
+
+                    {/* GRID node (now on right) */}
+                    <circle cx={GRID.x} cy={GRID.y} r="60" fill="url(#rfGridGlow)" />
+                    <circle cx={GRID.x} cy={GRID.y} r="36"
+                            fill="rgba(148,163,184,0.08)"
+                            stroke={netColor}
+                            strokeWidth="1.5" />
+                    <text x={GRID.x} y={GRID.y + 11} textAnchor="middle" fontSize="36">⚡</text>
                 </svg>
 
                 <NodeLabel
@@ -282,23 +308,30 @@ export function RealtimeFlow() {
                 />
                 <NodeLabel
                     x="50%" y="14%"
-                    eyebrow="GRID (NET TO UTILITY)"
-                    value={Math.abs(gridNet)}
-                    accent={netColor}
-                    sub={netLabel}
-                />
-                <NodeLabel
-                    x="85.5%" y="14%"
                     eyebrow="HOME LOAD"
                     value={home}
                     accent={COLOR.home}
                     sub="estimated"
                 />
+                <NodeLabel
+                    x="85.5%" y="14%"
+                    eyebrow="GRID (NET)"
+                    value={Math.abs(gridNet)}
+                    accent={netColor}
+                    sub={netLabel}
+                />
 
+                {/* Rate badges between the three nodes */}
                 <RateBadge x="32.3%" y="36%"
-                    label="→ INVERTER OUT" value={solar} color={COLOR.solar} active={solarActive} />
+                    label="→ TO HOME"
+                    value={Math.min(solar, home)}
+                    color={COLOR.solar}
+                    active={solarActive && homeActive} />
                 <RateBadge x="67.7%" y="36%"
-                    label="→ HOME DRAW" value={home} color={COLOR.home} active={homeActive} />
+                    label={importing ? "← FROM GRID" : "→ EXCESS TO GRID"}
+                    value={Math.abs(gridNet)}
+                    color={netColor}
+                    active={Math.abs(gridNet) > 0.05} />
 
                 {/* Conservation breakdown below the grid node */}
                 <div className="absolute pointer-events-none kpi-number text-[10px] text-fgMuted text-center"
@@ -348,6 +381,8 @@ function MobileFlow({
     solarActive: boolean; homeActive: boolean; importing: boolean; netColor: string;
 }) {
     const gridAbs = Math.abs(gridNet);
+    const gridArrowActive = gridAbs > 0.05;
+    // direction-aware label: when importing, energy flows GRID → HOME (up the stack)
     return (
         <div className="space-y-1.5">
             <NodeRow
@@ -361,22 +396,8 @@ function MobileFlow({
             <ArrowRow
                 color="#fbbf24"
                 active={solarActive}
-                label="INVERTER OUT"
-                value={solar}
-            />
-            <NodeRow
-                icon="⚡"
-                eyebrow="GRID (NET TO UTILITY)"
-                value={gridAbs}
-                accent={netColor}
-                sub={importing ? `IMPORT  ${gridAbs.toFixed(2)} kW` : `EXPORT  ${gridAbs.toFixed(2)} kW`}
-                active={gridAbs > 0.05}
-            />
-            <ArrowRow
-                color="#06b6d4"
-                active={homeActive}
-                label="HOME DRAW"
-                value={home}
+                label="↓ TO HOME"
+                value={Math.min(solar, home)}
             />
             <NodeRow
                 icon="🏠"
@@ -385,6 +406,21 @@ function MobileFlow({
                 accent="#06b6d4"
                 sub="estimated"
                 active={homeActive}
+            />
+            <ArrowRow
+                color={netColor}
+                active={gridArrowActive}
+                label={importing ? '↑ FROM GRID' : '↓ EXCESS TO GRID'}
+                value={gridAbs}
+                reverse={importing}
+            />
+            <NodeRow
+                icon="⚡"
+                eyebrow="GRID (NET TO UTILITY)"
+                value={gridAbs}
+                accent={netColor}
+                sub={importing ? `IMPORT  ${gridAbs.toFixed(2)} kW` : `EXPORT  ${gridAbs.toFixed(2)} kW`}
+                active={gridArrowActive}
             />
         </div>
     );
@@ -425,17 +461,24 @@ function NodeRow({
 }
 
 function ArrowRow({
-    color, active, label, value,
-}: { color: string; active: boolean; label: string; value: number }) {
+    color, active, label, value, reverse,
+}: { color: string; active: boolean; label: string; value: number; reverse?: boolean }) {
     const dim = 'rgba(255,255,255,0.18)';
     return (
         <div className="flex items-center gap-2 pl-4 py-0.5">
-            {/* vertical line + arrow */}
+            {/* vertical line + arrow (▲ when reverse, ▼ otherwise) */}
             <div className="flex flex-col items-center w-5">
+                {reverse && (
+                    <div className="text-xs leading-none" style={{ color: active ? color : dim }}>
+                        ▲
+                    </div>
+                )}
                 <div className="w-px h-3" style={{ background: active ? color : dim }} />
-                <div className="text-xs leading-none" style={{ color: active ? color : dim }}>
-                    ▼
-                </div>
+                {!reverse && (
+                    <div className="text-xs leading-none" style={{ color: active ? color : dim }}>
+                        ▼
+                    </div>
+                )}
             </div>
             <div className="kpi-number text-[10px] flex items-baseline gap-1.5"
                  style={{ color: active ? color : 'rgba(255,255,255,0.30)' }}>
